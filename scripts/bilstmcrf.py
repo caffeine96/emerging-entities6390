@@ -1,4 +1,8 @@
 import torch
+from tqdm import tqdm
+
+torch.manual_seed(42)
+
 
 class BiLSTMCRF(torch.nn.Module):
     def __init__(self, data, emb_size= 1024, hidden_size = 768, dropout=0.01, crf_layer=False,device="cpu"):
@@ -18,13 +22,15 @@ class BiLSTMCRF(torch.nn.Module):
         # vectors which will be initailized once we know the vocabulary of 
         # characters.
         self.lstm = torch.nn.LSTM(emb_size, hidden_size,batch_first=True,\
-                            dropout=dropout, bidirectional=True)
+                             bidirectional=True)
         # This is the classification head on the LSTM layer
         self.fc1 = torch.nn.Linear(hidden_size*2,int(hidden_size/2))
         self.relu = torch.nn.ReLU() 
         self.fc2 = torch.nn.Linear(int(hidden_size/2),len(data.labels))
 
         self.softmax = torch.nn.Softmax(dim=-1)
+
+        #self.label_sequence_validity = self.obtain_invalidity
 
     def prep_tokenizer(self,data):
         """ Computes the distinct number of characters in files.
@@ -100,7 +106,17 @@ class BiLSTMCRF(torch.nn.Module):
         return mean_pooled_emb.unsqueeze(0)
 
 
-    def compute_loss(self, data):
+    def forward_pass(self,inp, char_tokens_maps, print_log=False):
+        emb_inp = self.embedding_layer(inp)
+        lstm_out, _= self.lstm(emb_inp)
+        lstm_out_comb = self._mean_pool(lstm_out, char_tokens_maps)
+        out = self.fc2(self.relu(self.fc1(lstm_out_comb)))
+
+        return out 
+
+
+
+    def compute_loss(self, data, print_log=False):
         """ Compute Loss for the training sample
         Inputs
         ---------------
@@ -108,11 +124,59 @@ class BiLSTMCRF(torch.nn.Module):
         """
         gold_lab = torch.Tensor(data['label']).to(torch.long).to(self.device)
         inp = torch.Tensor(data['inp_tok']).to(torch.long).unsqueeze(0).to(self.device)
-        emb_inp = self.embedding_layer(inp)
-        lstm_out, _= self.lstm(emb_inp)
-        lstm_out_comb = self._mean_pool(lstm_out,data['inp_ind'])
-        out = self.fc2(self.relu(self.fc1(lstm_out_comb)))
+        out = self.forward_pass(inp, data['inp_ind'], print_log)
+
         return self.loss_fn(out.squeeze(0),gold_lab)
+
+
+
+    def predict(self, df):
+        """ Method to evaluate a split.
+        Inputs
+        -----------------
+        df - pd.DataFrame or dict. The data frame to be evaluated. This needs to 
+                have a inp_tok key containing the toeknized input. It also 
+                contains a label key containing the gold labels (integer-mapped).
+                Also, a 'inp_ind' if words are split in characters/sub-words
+        course_correction - bool. If True, illegal predictions are corrected 
+                                by selecting the next best label till a legal
+                                label is reached.
+        """
+        inp = torch.Tensor(df['inp_tok']).to(torch.long).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            out = self.forward_pass(inp, df['inp_ind'])
+            preds = torch.argmax(out,-1)
+            #if course_correction:
+            #    preds = course_corr(preds, out)
+        return preds,out
+                
+
+            #if ix ==5:
+            #    exit()
+
         
+
+
         
+def course_corr(pred,raw_scores):
+    if pred.shape[0] == 1:
+        pred = pred[0]
+    if raw_scores.shape[0] == 1:
+        raw_scores = raw_scores[0]
+        
+    final_pred = pred.clone()
+    
+    for ix in range(pred.shape[0]):
+        el = pred[ix].item()
+        if ix == 0:
+            continue
+
+
+        print(el)
+    
+
+
+if __name__ == "__main__":
+    a = torch.Tensor([[0,0,0]])
+    course_corr(a,torch.Tensor([0,0,0]))
 
