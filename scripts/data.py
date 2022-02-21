@@ -1,3 +1,5 @@
+import numpy as np
+
 class EntData():
     def __init__(self, train_file, dev_file, test_file):
         """ Constructor method. Loads and prepares data.
@@ -11,6 +13,8 @@ class EntData():
         self.dev_data, _ = self.data_prep(dev_file, label_set = self.labels)
         self.test_data, _ = self.data_prep(test_file, label_set = self.labels)
 
+        self.valid_set = self.compute_invalid_set(self.labels)
+    
 
 
     def data_prep(self, file_name, label_set = None):
@@ -66,3 +70,32 @@ class EntData():
 
         return processed_data, label_set
 
+
+
+    def compute_invalid_set(self, label_set):
+        valid_set = np.ones((len(label_set),len(label_set)))
+        
+        for ix, el in enumerate(label_set):
+            # 'O' can follow any label
+            if el == 'O':
+                continue
+            
+            tag_bio = el.split("-")[0]
+            tag_type = "-".join(el.split("-")[1:])
+
+            # "B-*" can follow any label
+            if tag_bio == "B":
+                continue
+            
+            for ix_iter, el_iter in enumerate(label_set):
+                if el_iter == 'O':
+                    valid_set[ix][ix_iter] = 0
+                # An 'I-x' label cannot follow a 
+                # 'B-y' or I-y' label
+                el_iter_type = "-".join(el_iter.split("-")[1:])
+
+                if el_iter_type != tag_type:
+                    valid_set[ix][ix_iter] = 0
+
+
+        return valid_set

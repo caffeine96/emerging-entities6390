@@ -43,6 +43,7 @@ class BiLSTMCRF(torch.nn.Module):
                     for charac in word:
                         if charac not in vocab:
                             vocab.append(charac)
+        vocab.append("<unk>")
         self.vocab = vocab
         self.embedding_layer = torch.nn.Embedding(len(vocab),self.emb_size).to(self.device)
         
@@ -83,7 +84,10 @@ class BiLSTMCRF(torch.nn.Module):
             for i, word in enumerate(item):
                 pos = []
                 for charac in word:
-                    sent_idx.append(self.vocab.index(charac))
+                    try:
+                        sent_idx.append(self.vocab.index(charac))
+                    except ValueError:
+                        sent_idx.append(len(self.vocab)-1)
                     pos.append(ix)
                     ix+=1
                 sent_pos.append(pos)
@@ -138,45 +142,14 @@ class BiLSTMCRF(torch.nn.Module):
                 have a inp_tok key containing the toeknized input. It also 
                 contains a label key containing the gold labels (integer-mapped).
                 Also, a 'inp_ind' if words are split in characters/sub-words
-        course_correction - bool. If True, illegal predictions are corrected 
-                                by selecting the next best label till a legal
-                                label is reached.
         """
         inp = torch.Tensor(df['inp_tok']).to(torch.long).unsqueeze(0).to(self.device)
         with torch.no_grad():
             out = self.forward_pass(inp, df['inp_ind'])
             preds = torch.argmax(out,-1)
-            #if course_correction:
-            #    preds = course_corr(preds, out)
+            
         return preds,out
                 
 
-            #if ix ==5:
-            #    exit()
-
-        
-
-
-        
-def course_corr(pred,raw_scores):
-    if pred.shape[0] == 1:
-        pred = pred[0]
-    if raw_scores.shape[0] == 1:
-        raw_scores = raw_scores[0]
-        
-    final_pred = pred.clone()
     
-    for ix in range(pred.shape[0]):
-        el = pred[ix].item()
-        if ix == 0:
-            continue
-
-
-        print(el)
-    
-
-
-if __name__ == "__main__":
-    a = torch.Tensor([[0,0,0]])
-    course_corr(a,torch.Tensor([0,0,0]))
-
+        
