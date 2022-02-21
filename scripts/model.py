@@ -9,6 +9,7 @@ from bilstmcrf import BiLSTMCRF
 
 GPU_ID = '1'
 torch.manual_seed(42)
+np.random.seed(42)
 device = torch.device(f"cuda:{GPU_ID}" if torch.cuda.is_available() else "cpu")
 
 MODEL_DIR = "./../models/"
@@ -31,14 +32,14 @@ class Model():
 
     
     
-    def train(self, max_ep=100, lr=0.001, save_model=False):
+    def train(self, max_ep=100, lr=0.001, save_model=False, e_stop =10):
         # Tokenize and convert words into sub-words/characters 
         # and sub-words/characters to indices
         ctime = datetime.now()
         folder_name = f"{ctime.month}{ctime.day}_{ctime.hour}{ctime.minute}/"
         if save_model:
             Path.mkdir(Path(MODEL_DIR+folder_name), exist_ok=True, parents=True)
-            with open("log.txt","a+") as f:
+            with open(f"{MODEL_DIR}{folder_name}log.txt","a+") as f:
                 f.write(f"Experiment Name- {self.exp_name}")
                 f.write(f"Learning Rate- {lr}")
                 
@@ -58,9 +59,11 @@ class Model():
         save = True
         print_log = False
         best_metric = 0
+        no_improv = 0
         for ep in range(1,max_ep+1):
             print(f"Epoch {ep}\n")
             ep_tr_loss = []
+            self.model.train()
             for train_ix, row in tqdm(train_set.iterrows()): 
                 optimizer.zero_grad()
                 #if train_ix == 2:
@@ -70,25 +73,33 @@ class Model():
                 optimizer.step()
                 ep_tr_loss.append(loss.item())
                 
-                #if train_ix == 100:
-                #    print(ep_tr_loss)
+                #if train_ix == 1000:
+                    #print(ep_tr_loss)
                 #    print(row['inp_tok'])
                 #    print(np.mean(ep_tr_loss))
                 #    exit()
                 #   break
 
+            self.model.eval()
             print(f"Average Train Loss: {np.mean(ep_tr_loss)}\n")
             dev_metrics = self.evaluate(dev_set, save, best_metric)
 
             if dev_metrics['total_ent']['f1'] > best_metric and save_model:
-                best_metric = dev_metrics['total']['f1']
-            
+                best_metric = dev_metrics['total_ent']['f1']
+                no_improv = 0
                 torch.save({
                     'epoch' : ep,
                     'model_state_dict': self.model.state_dict(),
                     'optim_state_dict': optimizer.state_dict(),
                     'metrics': dev_metrics
                     }, f"{MODEL_DIR}{folder_name}{ep}")
+            else:
+                no_improv += 1
+
+
+            if no_improv==e_stop:
+                print("Stopping early to avoid overfitting!")
+                exit()
 
 
     def evaluate(self, df, save=True, best_metric=0, course_correction=True):

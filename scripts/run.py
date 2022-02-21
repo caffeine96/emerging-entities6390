@@ -16,7 +16,10 @@ def parse_args(parser):
     parser.add_argument('--run_type', default="predict", type=str)
     parser.add_argument('--eval_split', default="dev", type=str)
     parser.add_argument('--pred_sentence', default="The paper was with Terry .", type=str)
-    parser.add_argument('--model_path', default="./../models/test/9", type=str)
+    parser.add_argument('--model_path', default="./../models/221_1156/4", type=str)
+    parser.add_argument('--save_model', dest='save_model', action='store_true')
+    parser.add_argument('--no-save_model', dest='save_model', action='store_false')
+    parser.set_defaults(save_model=False)
 
     return parser
 
@@ -33,7 +36,7 @@ if __name__ == "__main__":
 
     model = Model(args['exp_name'], data)
     if args['run_type'] == "train":
-        model.train()
+        model.train(save_model=args["save_model"])
     else:
         model_path = args['model_path']
         model.load_model(model_path)
@@ -48,7 +51,7 @@ if __name__ == "__main__":
                 model.data.test_data['inp_tok'], model.data.test_data['inp_ind'] =  model.model.tokenize(model.data.test_data['inp'])
                 split_data = pd.DataFrame.from_dict(model.data.test_data)
         
-            metrics = model.evaluate(split_data, save=False)
+            metrics = model.evaluate(split_data, save=True)
             print(metrics)
         else:
             pred_tags = model.predict(pred_sentence.split())

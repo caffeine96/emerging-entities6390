@@ -21,10 +21,10 @@ class BiLSTMCRF(torch.nn.Module):
         # Intializing the LSTM layer. Inputs are embedded character
         # vectors which will be initailized once we know the vocabulary of 
         # characters.
-        self.lstm = torch.nn.LSTM(emb_size, hidden_size,batch_first=True,\
-                             bidirectional=True)
+        self.lstm = torch.nn.LSTM(emb_size, hidden_size,batch_first=True, num_layers=2)#, bidirectional=True)
+        #self.lstm = torch.nn.Linear(emb_size, hidden_size*2)
         # This is the classification head on the LSTM layer
-        self.fc1 = torch.nn.Linear(hidden_size*2,int(hidden_size/2))
+        self.fc1 = torch.nn.Linear(hidden_size,int(hidden_size/2))
         self.relu = torch.nn.ReLU() 
         self.fc2 = torch.nn.Linear(int(hidden_size/2),len(data.labels))
 
@@ -112,7 +112,7 @@ class BiLSTMCRF(torch.nn.Module):
 
     def forward_pass(self,inp, char_tokens_maps, print_log=False):
         emb_inp = self.embedding_layer(inp)
-        lstm_out, _= self.lstm(emb_inp)
+        lstm_out, _ = self.lstm(emb_inp)
         lstm_out_comb = self._mean_pool(lstm_out, char_tokens_maps)
         out = self.fc2(self.relu(self.fc1(lstm_out_comb)))
 
