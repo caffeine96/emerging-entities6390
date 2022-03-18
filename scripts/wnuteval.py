@@ -540,7 +540,7 @@ def main():
     lines = [line for line in fileinput.input()]
     tokens = doc_to_toks(lines)
     entities = doc_to_entities(lines)
-
+    
     # report results
     print("### ENTITY F1-SCORES ###")
     for line in fmt_results(tokens, entities, surface_form=False):

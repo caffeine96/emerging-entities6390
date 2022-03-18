@@ -19,6 +19,7 @@ def parse_args(parser):
     parser.add_argument('--model_path', default="./../models/221_1156/4", type=str)
     parser.add_argument('--save_model', dest='save_model', action='store_true')
     parser.add_argument('--no-save_model', dest='save_model', action='store_false')
+    parser.add_argument('--lr', default=0.01, type=float)
     parser.set_defaults(save_model=False)
 
     return parser
@@ -33,10 +34,10 @@ if __name__ == "__main__":
     data = EntData(args['train_file'],args['dev_file'],args['test_file'])
     
     pred_sentence = args['pred_sentence']
-
     model = Model(args['exp_name'], data)
+    
     if args['run_type'] == "train":
-        model.train(save_model=args["save_model"])
+        model.train(save_model=args["save_model"], lr=args["lr"])
     else:
         model_path = args['model_path']
         model.load_model(model_path)

@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 
 class EntData():
     def __init__(self, train_file, dev_file, test_file):
@@ -15,7 +16,7 @@ class EntData():
 
         self.valid_set = self.compute_invalid_set(self.labels)
     
-
+        #self.get_stats(self.train_data)
 
     def data_prep(self, file_name, label_set = None):
         """ Read data from the file_name. Files are supposed to be 
@@ -99,3 +100,18 @@ class EntData():
 
 
         return valid_set
+
+
+
+    def get_stats(self,data):
+        print(self.labels)
+        stat_map = {1:"Location", 3:"Group",4:"Corp",5:"Person",6:"Creative-Work",7:"Product"}
+        count = defaultdict(int)
+        for sent in data['label']:
+            for lab in sent:
+                if lab in stat_map.keys():
+                    count[stat_map[lab]] += 1
+
+        print(count)
+
+        

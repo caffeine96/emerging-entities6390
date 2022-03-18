@@ -4,7 +4,7 @@ from tqdm import tqdm
 torch.manual_seed(42)
 
 
-class BiLSTMCRF(torch.nn.Module):
+class BiLSTM(torch.nn.Module):
     def __init__(self, data, emb_size= 1024, hidden_size = 768, dropout=0.01, crf_layer=False,device="cpu"):
         """ Constructor for the BiLSTM CRF module
         Inputs
@@ -14,7 +14,7 @@ class BiLSTMCRF(torch.nn.Module):
         hidden_size - int. Out-dimensions of the LSTM layer
         dropout     - float. Dropout at each layer
         """
-        super(BiLSTMCRF, self).__init__()
+        super(BiLSTM, self).__init__()
         self.emb_size = emb_size
         self.crf_layer = crf_layer
         self.device = device
@@ -29,7 +29,7 @@ class BiLSTMCRF(torch.nn.Module):
         self.fc2 = torch.nn.Linear(int(hidden_size/2),len(data.labels))
 
         self.softmax = torch.nn.Softmax(dim=-1)
-
+        self.prep_loss(data)
         #self.label_sequence_validity = self.obtain_invalidity
 
     def prep_tokenizer(self,data):
@@ -46,7 +46,11 @@ class BiLSTMCRF(torch.nn.Module):
         vocab.append("<unk>")
         self.vocab = vocab
         self.embedding_layer = torch.nn.Embedding(len(vocab),self.emb_size).to(self.device)
-        
+       
+
+    def prep_loss(self,data):
+        """ Prepares weighted loss
+        """
         if not self.crf_layer:
             count_list = [0]*len(data.labels)
             total = 0

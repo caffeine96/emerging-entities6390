@@ -5,7 +5,8 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-from bilstmcrf import BiLSTMCRF
+from bilstmcrf import BiLSTM
+from roberta import RoBERTa
 
 GPU_ID = '1'
 torch.manual_seed(42)
@@ -26,8 +27,11 @@ class Model():
         self.exp_name = exp_name
 
         if self.exp_name == "lstm_char":
-            self.model = BiLSTMCRF(data,device=device).to(device)
+            self.model = BiLSTM(data,device=device).to(device)
             self.model.prep_tokenizer(data)
+        elif self.exp_name == "roberta":
+            self.model = RoBERTa(data,device=device).to(device)
+
 
 
     
@@ -67,8 +71,9 @@ class Model():
             for train_ix, row in tqdm(train_set.iterrows()): 
                 optimizer.zero_grad()
                 #if train_ix == 2:
-                #    print_log = True
+                #    print_log = True)
                 loss = self.model.compute_loss(row, print_log)
+                
                 loss.backward()
                 optimizer.step()
                 ep_tr_loss.append(loss.item())
@@ -82,6 +87,7 @@ class Model():
 
             self.model.eval()
             print(f"Average Train Loss: {np.mean(ep_tr_loss)}\n")
+            #continue
             dev_metrics = self.evaluate(dev_set, save, best_metric)
 
             if dev_metrics['total_ent']['f1'] > best_metric and save_model:
