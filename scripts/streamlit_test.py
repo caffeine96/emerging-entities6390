@@ -10,17 +10,35 @@ test_file = f"{DATA_DIR}/emerging.test.annotated"
 
 data = EntData(train_file,dev_file, test_file)
 
+if 'model' not in st.session_state:
+    st.session_state['model'] = ''
+#if 'sent' not in st.session_state:
+#    st.session_state['sent'] = ''
 
-model = Model("lstm_char",data)
-model_path = "./../models/221_1156/4"
-model.load_model(model_path)
+
+lstm_model_path = "./../models/221_1156/4"
+roberta_model_path = "./../models/317_1758/6"
 
 st.header("Emerging Entities Tagging: A 6390 Project")
+model_option = st.selectbox("Which model needs to be tested?", ('LSTM','RoBERTa'))
+
+if st.session_state['model']!=model_option:
+    if model_option == "LSTM":
+        model = Model("lstm_char",data)
+        model.load_model(lstm_model_path)
+    elif model_option == "RoBERTa":
+        model = Model("roberta", data)
+        model.load_model(roberta_model_path)
+    st.session_state['model'] = model_option
+    st.session_state['model_val'] = model
+
+
 sent = st.text_input('Input Sentence',"The paper is with Terry .")
 
 st.write()
 st.write("Model Prediction:")
-pred_tags = model.predict(sent.split())
+#pred_tags = model.predict(sent.split())
+pred_tags = st.session_state['model_val'].predict(sent.split())
 c1, c2 = st.columns(2)
 c1.markdown("**Word**")
 c2.markdown("**Predicted Tag**")
