@@ -19,8 +19,10 @@ def parse_args(parser):
     parser.add_argument('--model_path', default="./../models/221_1156/4", type=str)
     parser.add_argument('--save_model', dest='save_model', action='store_true')
     parser.add_argument('--no-save_model', dest='save_model', action='store_false')
+    parser.add_argument('--shuffle', dest='shuffle',action="store_true")
     parser.add_argument('--lr', default=0.01, type=float)
     parser.set_defaults(save_model=False)
+    parser.set_defaults(shuffle=False)
 
     return parser
 
@@ -35,9 +37,10 @@ if __name__ == "__main__":
     
     pred_sentence = args['pred_sentence']
     model = Model(args['exp_name'], data)
-    
+    analysis = True
+
     if args['run_type'] == "train":
-        model.train(save_model=args["save_model"], lr=args["lr"])
+        model.train(save_model=args["save_model"], lr=args["lr"], shuffle=args["shuffle"])
     else:
         model_path = args['model_path']
         model.load_model(model_path)
@@ -52,7 +55,7 @@ if __name__ == "__main__":
                 model.data.test_data['inp_tok'], model.data.test_data['inp_ind'] =  model.model.tokenize(model.data.test_data['inp'])
                 split_data = pd.DataFrame.from_dict(model.data.test_data)
         
-            metrics = model.evaluate(split_data, save=True)
+            metrics = model.evaluate(split_data, save=True,analysis=analysis)
             print(metrics)
         else:
             pred_tags = model.predict(pred_sentence.split())

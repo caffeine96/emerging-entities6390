@@ -36,7 +36,7 @@ class Model():
 
     
     
-    def train(self, max_ep=100, lr=0.001, save_model=False, e_stop =10):
+    def train(self, max_ep=100, lr=0.001, save_model=False, e_stop =10, shuffle=False):
         # Tokenize and convert words into sub-words/characters 
         # and sub-words/characters to indices
         ctime = datetime.now()
@@ -57,7 +57,10 @@ class Model():
         train_set   = pd.DataFrame.from_dict(self.data.train_data)
         dev_set     = pd.DataFrame.from_dict(self.data.dev_data)
         test_set    = pd.DataFrame.from_dict(self.data.test_data)
-       
+        
+        if shuffle:
+            train_set = train_set.sample(frac=1)
+
         optimizer = torch.optim.Adam(list(self.model.parameters()),lr=lr)
 
         save = True
@@ -108,7 +111,7 @@ class Model():
                 exit()
 
 
-    def evaluate(self, df, save=True, best_metric=0, course_correction=True):
+    def evaluate(self, df, save=True, best_metric=0, course_correction=True,analysis=False):
         all_pred = []
         all_gold = []
         all_word = []
@@ -131,7 +134,7 @@ class Model():
         print(f"Illegal Predicitons :{violations}")
     
         eval_metrics = self.calc_f1(all_gold,all_pred)
-        eval_metrics_entity = self.calc_f1_ent(all_gold_sent, all_pred_sent, all_word_sent)
+        eval_metrics_entity = self.calc_f1_ent(all_gold_sent, all_pred_sent, all_word_sent,analysis=analysis)
         # rename dictionary
         for key in eval_metrics_entity.keys():
             eval_metrics[key+"_ent"] = eval_metrics_entity[key]
@@ -291,7 +294,7 @@ class Model():
 
 
 
-    def calc_f1_ent(self, gold, pred, sents): 
+    def calc_f1_ent(self, gold, pred, sents,analysis=False): 
         cf_ent = {
                 "total": np.zeros((2,2)),
                 "corporation": np.zeros((2,2)),
@@ -321,6 +324,9 @@ class Model():
                             entities.append(entity)
             return entities
 
+        if analysis:
+            incorr_classification = np.zeros((len(cf_ent.keys())-2,len(cf_ent.keys())-2))
+
 
         for sent_id in range(len(sents)):
             sent = sents[sent_id]
@@ -348,6 +354,11 @@ class Model():
                             # False positive for the predicted category
                             cf_ent[p_ent["lab"]][1][0] += 1
                             cf_ent["total"][1][0] += 1
+
+                        if analysis:
+                            g_ix = list(cf_ent.keys()).index(g_ent["lab"]) - 1
+                            p_ix = list(cf_ent.keys()).index(p_ent["lab"]) - 1
+                            incorr_classification[g_ix][p_ix] += 1
                     # If processed, we are done
                     if flag:
                         break
@@ -371,6 +382,9 @@ class Model():
                     cf_ent["extr"][1][0] += 1
         
         metrics = self.calc_f1_from_cf(cf_ent)
+
+        if analysis:
+            print(incorr_classification)
         return metrics 
 
 
