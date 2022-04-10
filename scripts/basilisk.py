@@ -1,4 +1,5 @@
 import ast
+import argparse
 import math
 import pandas as pd
 from data import EntData
@@ -261,7 +262,7 @@ def calculate_avglogscore(candidates, pattern_pool, new_extraction_ctxts):
 
 def save_to_file(data_unlab, entities,category):
     for ent in entities:
-        for ix, tweet in tqdm(data_unlab.iteritems()):
+        for ix, tweet in data_unlab.iteritems():
             flag,ids = check_entity(ent, tweet.lower())
             if flag:
                 tweet_list = tweet.split()
@@ -269,7 +270,7 @@ def save_to_file(data_unlab, entities,category):
                 for idx in ids:
                     lab[idx] = f"B-{category}"
                     for rem_ix in range(len(ent.split())-1):
-                        lad[idx_rem_ix+1] = f"I-{category}"
+                        lab[idx+rem_ix+1] = f"I-{category}"
                 
                 with open(f"{category}_aug.txt","a+") as f:
                     for tw_ix in range(len(tweet_list)):
@@ -283,16 +284,23 @@ def save_to_file(data_unlab, entities,category):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--category',default='creative-work',type=str)
+    args = vars(parser.parse_args())
+
+    
     train_file = f"{DATA_DIR}/wnut17train.conll"
     dev_file = f"{DATA_DIR}/emerging.dev.conll"
     test_file = f"{DATA_DIR}/emerging.test.annotated"
     data = EntData(train_file,dev_file,test_file)
 
-    category = "creative-work"
+    category = args["category"]
     context_window = 2
-    max_iter = 1
-    init_pattern_pool = 3
+    max_iter = 10
+    init_pattern_pool = 10
     increment_pattern = 2
+    top_cont = 100
+    ent_per_iter = 10
      
     rev_map = [data.labels.index(f"B-{category}"),data.labels.index(f"I-{category}")]
 
@@ -300,9 +308,11 @@ if __name__ == "__main__":
     dev_entities, _ = extract_task_entities(data.dev_data, category=category, rel_lab_ids=rev_map)
     test_entities, _ = extract_task_entities(data.test_data,category=category, rel_lab_ids=rev_map)
 
+    #print(og_train_entities)
+    #exit()
     data_unlab = pd.read_csv("./../../sentiment140.csv", engine ='python', error_bad_lines=False, header=0, names = ["0","1","2","3","4","tweet"])
     
-    data_unlab = data_unlab['tweet']#.head(100000)
+    data_unlab = data_unlab['tweet']#.head(500000)
 
     seed_entities_pre = list(filter(lambda i: i not in reject_list[category], og_train_entities))
     
@@ -316,8 +326,9 @@ if __name__ == "__main__":
       
         # Ensures singly triggered contexts are not considered
         top_ctxts = {key: new_ctxts[key] for key in new_ctxts.keys() if len(new_ctxts[key]) > 1}
-        #top_ctxts = dict(sorted(new_ctxts.items(),key=lambda item: len(item),reverse=True)[:top_cont])
-
+        # We limit this due to compute
+        top_ctxts = dict(sorted(top_ctxts.items(),key=lambda item: len(item[1]),reverse=True)[:top_cont])
+        
         for key in top_ctxts.keys():
             pattern_pool[key] = {"pos_extr": len(top_ctxts[key])}
 
@@ -328,7 +339,6 @@ if __name__ == "__main__":
         
         # This contains all the patterns with at least 2 extarction
         pattern_pool = calculate_rlogf(pattern_pool)
-
         pattern_pool_size = init_pattern_pool + increment_pattern*it
 
         # Note that here we have used a different notation.
@@ -338,11 +348,11 @@ if __name__ == "__main__":
         candidate_entities = []
         for key in rel_pattern_pool:
             for en in ctxts_neg[key]:
-                if (en not in candidate_entities) or (en not in dev_entities) or (en not in test_entities):
+                if (en not in candidate_entities) and (en not in dev_entities) and (en not in test_entities):
                     candidate_entities.append(en)
 
         entity_scores = calculate_avglogscore(candidate_entities,pattern_pool,ctxts_neg)
-        entities_to_add = dict(sorted(entity_scores.items(), key=lambda item: item[1], reverse=True)[:10])
+        entities_to_add = dict(sorted(entity_scores.items(), key=lambda item: item[1], reverse=True)[:ent_per_iter])
         print(f"Entities to add: {entities_to_add.keys()}")
         for key in entities_to_add.keys():
             discovered_entities.append(key)
