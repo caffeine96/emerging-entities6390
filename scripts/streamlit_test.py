@@ -8,8 +8,6 @@ train_file = f"{DATA_DIR}/wnut17train.conll"
 dev_file = f"{DATA_DIR}/emerging.dev.conll"
 test_file = f"{DATA_DIR}/emerging.test.annotated"
 
-data = EntData(train_file,dev_file, test_file)
-
 if 'model' not in st.session_state:
     st.session_state['model'] = ''
 #if 'sent' not in st.session_state:
@@ -18,17 +16,24 @@ if 'model' not in st.session_state:
 
 lstm_model_path = "./../models/221_1156/4"
 roberta_model_path = "./../models/317_1758/6"
+roberta_bas_model_path = "./../models/410_136/6"
 
 st.header("Emerging Entities Tagging: A 6390 Project")
-model_option = st.selectbox("Which model needs to be tested?", ('LSTM','RoBERTa'))
+model_option = st.selectbox("Which model needs to be tested?", ('LSTM','RoBERTa','RoBERTa-basilisk'))
 
 if st.session_state['model']!=model_option:
     if model_option == "LSTM":
+        data = EntData(train_file,dev_file, test_file)
         model = Model("lstm_char",data)
         model.load_model(lstm_model_path)
     elif model_option == "RoBERTa":
+        data = EntData(train_file,dev_file, test_file)
         model = Model("roberta", data)
         model.load_model(roberta_model_path)
+    elif model_option == "RoBERTa-basilisk":
+        data = EntData("basilisk_train2.txt",dev_file, test_file)
+        model = Model("roberta",data)
+        model.load_model(roberta_bas_model_path)
     st.session_state['model'] = model_option
     st.session_state['model_val'] = model
 

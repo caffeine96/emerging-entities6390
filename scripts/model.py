@@ -60,6 +60,8 @@ class Model():
         
         if shuffle:
             train_set = train_set.sample(frac=1)
+            #print(train_set.head())
+            #exit()
 
         optimizer = torch.optim.Adam(list(self.model.parameters()),lr=lr)
 
@@ -397,7 +399,8 @@ class Model():
         inp_dict['inp_tok'] = inp_tok[0]
         inp_dict['inp_ind'] = inp_ind[0]
         
-        preds, _ = self.model.predict(inp_dict)
+        preds, out = self.model.predict(inp_dict)
+        preds, violations_new = self.course_correction(preds,out)
 
         pred_final = preds[0].tolist()
         pred_final = [self.data.labels[p] for p in pred_final]
